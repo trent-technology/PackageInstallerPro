@@ -1,4 +1,13 @@
 {
-  "repository_url": "",
-  "apps": []
+  "repository_url": "C:\\Users\\WDAGUtilityAccount\\Downloads\\hwnas\\",
+  "apps": [
+    {
+      "name": "MSTeamsSetup",
+      "installer": "MSTeamsSetup.exe"
+    },
+    {
+      "name": "Acrobat Pro 2025",
+      "installer": "Acrobat Pro 2025.msi"
+    }
+  ]
 }
