@@ -1,87 +1,57 @@
-import json
 import os
-import sys
-import subprocess
-
-from PyQt6.QtWidgets import (
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QPushButton,
-    QProgressBar,
-    QScrollArea,
-    QMessageBox
+import json
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QPushButton,
+    QListWidget, QMessageBox
 )
+from install_manager import send_install_command
 
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
-def resource_path(relative_path):
-    """Get absolute path to resource (for PyInstaller compatibility)."""
-    if hasattr(sys, '_MEIPASS'):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
-
-
-class AppWindow(QMainWindow):
+class PackageInstallerPro(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PackageInstallerPro")
-        self.setFixedSize(600, 400)
+        self.resize(400, 300)
+
+        self.layout = QVBoxLayout()
+        self.label = QLabel("Select a program to install:")
+        self.program_list = QListWidget()
+        self.install_button = QPushButton("Install Selected Program")
+
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.program_list)
+        self.layout.addWidget(self.install_button)
+
+        self.setLayout(self.layout)
+        self.install_button.clicked.connect(self.install_selected_program)
+
         self.load_config()
-        self.build_ui()
 
     def load_config(self):
         try:
-            with open(resource_path("config.json"), "r") as f:
-                self.config = json.load(f)
+            with open(CONFIG_PATH, "r") as f:
+                data = json.load(f)
+                self.packages = data["packages"]
+                for pkg in self.packages:
+                    self.program_list.addItem(pkg["name"])
         except Exception as e:
-            self.config = {"apps": []}
-            print(f"Failed to load config.json: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load config.json:\n{e}")
 
-    def build_ui(self):
-        central = QWidget()
-        layout = QVBoxLayout()
+    def install_selected_program(self):
+        selected = self.program_list.currentItem()
+        if not selected:
+            QMessageBox.warning(self, "No selection", "Please select a program to install.")
+            return
 
-        layout.addWidget(QLabel("Available Applications:"))
+        pkg = next((p for p in self.packages if p["name"] == selected.text()), None)
+        if not pkg:
+            QMessageBox.critical(self, "Error", "Program not found in config.")
+            return
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setFixedHeight(250)
+        success, message = send_install_command(pkg["installer"], pkg["silent_args"])
 
-        app_widget = QWidget()
-        app_layout = QVBoxLayout()
-
-        if not self.config.get("apps"):
-            empty_label = QLabel("No applications available.")
-            app_layout.addWidget(empty_label)
+        if success:
+            QMessageBox.information(self, "Success", f"{pkg['name']} installed successfully.")
         else:
-            for app in self.config.get("apps", []):
-                btn = QPushButton(f"Install {app['name']}")
-                btn.clicked.connect(lambda checked, a=app: self.install_app(a))
-                app_layout.addWidget(btn)
-
-        app_widget.setLayout(app_layout)
-        scroll.setWidget(app_widget)
-
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setValue(0)
-
-        layout.addWidget(scroll)
-        layout.addWidget(self.progress_bar)
-        central.setLayout(layout)
-        self.setCentralWidget(central)
-
-    def install_app(self, app):
-        self.progress_bar.setValue(0)
-        installer_path = os.path.join(self.config["repository_url"], app["installer"])
-
-        try:
-            subprocess.run([installer_path], check=True)
-            self.progress_bar.setValue(100)
-            QMessageBox.information(self, "Success", f"{app['name']} installed successfully.")
-        except subprocess.CalledProcessError as e:
-            self.progress_bar.setValue(0)
-            QMessageBox.critical(self, "Error", f"Failed to install {app['name']}.\n\n{e}")
-        except FileNotFoundError:
-            self.progress_bar.setValue(0)
-            QMessageBox.critical(self, "Error", f"Installer not found:\n{installer_path}")
+            QMessageBox.critical(self, "Error", f"Install failed:\n{message}")
