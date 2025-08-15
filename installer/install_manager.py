@@ -1,29 +1,29 @@
-import urllib.request
-import subprocess
-import os
-from PyQt6.QtWidgets import QMessageBox
+import win32file
 
-def download_and_install(url, filename, progress_bar, requires_admin):
-    local_path = os.path.join("temp", filename)
-    os.makedirs("temp", exist_ok=True)
+PIPE_NAME = r"\\.\pipe\PackageInstallerPipe"
 
-    def reporthook(block_num, block_size, total_size):
-        downloaded = block_num * block_size
-        if total_size > 0:
-            percent = min(int(downloaded * 100 / total_size), 100)
-            progress_bar.setValue(percent)
-
+def send_install_command(installer_filename, silent_args):
     try:
-        urllib.request.urlretrieve(url, local_path, reporthook)
-    except Exception as e:
-        QMessageBox.critical(None, "Download Failed", str(e))
-        return
+        pipe = win32file.CreateFile(
+            PIPE_NAME,
+            win32file.GENERIC_READ | win32file.GENERIC_WRITE,
+            0, None,
+            win32file.OPEN_EXISTING,
+            0, None
+        )
 
-    try:
-        if requires_admin:
-            # Requires elevation
-            subprocess.run(['powershell', 'Start-Process', local_path, '-Verb', 'runAs'], check=True)
+        command = f"INSTALL {installer_filename} {silent_args}"
+        win32file.WriteFile(pipe, command.encode('utf-8'))
+
+        result, response = win32file.ReadFile(pipe, 4096)
+        win32file.CloseHandle(pipe)
+
+        output = response.decode('utf-8').strip()
+
+        if output == "OK":
+            return True, "Success"
         else:
-            subprocess.run([local_path], check=True)
+            return False, output
+
     except Exception as e:
-        QMessageBox.critical(None, "Installation Failed", str(e))
+        return False, str(e)
