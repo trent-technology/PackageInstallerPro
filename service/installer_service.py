@@ -10,7 +10,7 @@ import logging
 
 SERVICE_NAME = "PackageInstallerProService"
 PIPE_NAME = r"\\.\pipe\PackageInstallerPipe"
-ALLOWED_INSTALLER_DIR = r"\\YourNetworkShare\Installers"  # 🔁 Replace this
+ALLOWED_INSTALLER_DIR = r"\\YOUR\NETWORK\SHARE\Installers"  # 🔁 Replace this with your UNC path
 
 LOG_FILE = os.path.join(os.environ["ProgramData"], "PackageInstallerPro", "install_service.log")
 os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
@@ -21,11 +21,10 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
-
 class PackageInstallerProService(win32serviceutil.ServiceFramework):
     _svc_name_ = SERVICE_NAME
     _svc_display_name_ = "Package Installer Pro Service"
-    _svc_description_ = "Allows non-admin users to request software installs approved by IT."
+    _svc_description_ = "Allows non-admin users to install curated apps through PackageInstallerPro."
 
     def __init__(self, args):
         win32serviceutil.ServiceFramework.__init__(self, args)
@@ -38,13 +37,12 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.hWaitStop)
 
     def SvcDoRun(self):
-        servicemanager.LogInfoMsg(f"{SERVICE_NAME} started.")
+        servicemanager.LogInfoMsg("PackageInstallerProService started.")
         self.run()
 
     def run(self):
         while self.running:
             try:
-                logging.info("Waiting for install request...")
                 pipe = win32pipe.CreateNamedPipe(
                     PIPE_NAME,
                     win32pipe.PIPE_ACCESS_DUPLEX,
@@ -52,13 +50,14 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
                     1, 65536, 65536,
                     0, None
                 )
-
                 win32pipe.ConnectNamedPipe(pipe, None)
-                result, data = win32file.ReadFile(pipe, 4096)
+                _, data = win32file.ReadFile(pipe, 4096)
                 command = data.decode("utf-8").strip()
-                logging.info(f"Received command: {command}")
 
-                response = self.handle_command(command)
+                if command.startswith("INSTALL "):
+                    response = self.handle_install(command)
+                else:
+                    response = "ERROR Invalid command"
 
                 win32file.WriteFile(pipe, response.encode("utf-8"))
                 win32file.CloseHandle(pipe)
@@ -66,33 +65,26 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
             except Exception as e:
                 logging.error(f"Service error: {e}")
 
-    def handle_command(self, command):
-        if not command.startswith("INSTALL "):
-            return "ERROR Invalid command"
-
+    def handle_install(self, command):
         parts = command[len("INSTALL "):].split()
         if not parts:
             return "ERROR No installer specified"
 
         installer_file = parts[0]
-        args = parts[1:] if len(parts) > 1 else []
+        args = parts[1:]
 
         installer_path = os.path.join(ALLOWED_INSTALLER_DIR, installer_file)
 
-        if not installer_path.startswith(ALLOWED_INSTALLER_DIR):
-            return "ERROR Installer path not allowed"
-
         if not os.path.exists(installer_path):
-            return "ERROR Installer file not found"
+            return "ERROR Installer not found"
 
         try:
             subprocess.run([installer_path] + args, check=True)
-            logging.info(f"Successfully installed: {installer_file}")
+            logging.info(f"Installed {installer_file} with args: {args}")
             return "OK"
         except subprocess.CalledProcessError as e:
-            logging.error(f"Install failed for {installer_file}: {e}")
+            logging.error(f"Failed to install {installer_file}: {e}")
             return f"ERROR Install failed: {e}"
-
 
 if __name__ == '__main__':
     win32serviceutil.HandleCommandLine(PackageInstallerProService)
