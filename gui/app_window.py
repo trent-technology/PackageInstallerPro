@@ -14,7 +14,7 @@ def resource_path(relative_path):
 class AppWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Creative Cloud Clone")
+        self.setWindowTitle("PackageInstallerPro")
         self.setFixedSize(600, 400)
         self.load_config()
         self.build_ui()
