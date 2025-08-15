@@ -1,43 +1,55 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton, QProgressBar, QMessageBox, QScrollArea
-from installer.install_manager import download_and_install
-import json, os
+# gui/app_window.py
+
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QProgressBar, QScrollArea
+import json
+import os
+import sys
+
+def resource_path(relative_path):
+    """Handle file paths inside PyInstaller bundle."""
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 class AppWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Creative Cloud Clone")
-        self.setFixedSize(600, 600)
+        self.setFixedSize(600, 400)
         self.load_config()
         self.build_ui()
 
     def load_config(self):
-        with open("config.json", "r") as f:
-            self.config = json.load(f)
+        try:
+            with open(resource_path("config.json"), "r") as f:
+                self.config = json.load(f)
+        except Exception as e:
+            self.config = {"apps": []}
 
     def build_ui(self):
         central = QWidget()
         layout = QVBoxLayout()
-        self.progress_bar = QProgressBar()
+
         layout.addWidget(QLabel("Available Applications:"))
+        
         scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFixedHeight(250)
+
         app_widget = QWidget()
         app_layout = QVBoxLayout()
 
-        for app in self.config["apps"]:
-            btn = QPushButton(f"Install {app['name']}")
-            btn.clicked.connect(lambda checked, a=app: self.install_app(a))
-            app_layout.addWidget(btn)
+        if not self.config.get("apps"):
+            empty_label = QLabel("No applications available.")
+            app_layout.addWidget(empty_label)
 
         app_widget.setLayout(app_layout)
         scroll.setWidget(app_widget)
-        scroll.setWidgetResizable(True)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setValue(0)
 
         layout.addWidget(scroll)
         layout.addWidget(self.progress_bar)
         central.setLayout(layout)
         self.setCentralWidget(central)
-
-    def install_app(self, app):
-        installer_url = self.config["repository_url"] + app["filename"]
-        self.progress_bar.setValue(0)
-        download_and_install(installer_url, app["filename"], self.progress_bar, app["requires_admin"])
