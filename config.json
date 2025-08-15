@@ -1,17 +1,4 @@
 {
-  "repository_url": "http://yourserver.com/installers/",
-  "apps": [
-    {
-      "name": "Photoshop",
-      "filename": "photoshop_installer.exe",
-      "icon": "photoshop.png",
-      "requires_admin": false
-    },
-    {
-      "name": "Illustrator",
-      "filename": "illustrator_installer.exe",
-      "icon": "illustrator.png",
-      "requires_admin": false
-    }
-  ]
+  "repository_url": "",
+  "apps": []
 }
