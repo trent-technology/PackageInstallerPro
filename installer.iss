@@ -9,7 +9,7 @@ OutputBaseFilename=PackageInstallerProInstaller
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
-MinVersion=10.0  ; Windows 10+
+MinVersion=0,10.0.10240  ; Windows 10 (build 10240) and later
 DisableProgramGroupPage=yes
 Uninstallable=not IsTaskSelected('portable')
 
@@ -37,44 +37,51 @@ Filename: "{app}\PackageInstallerProService.exe"; Parameters: "stop"; RunOnceId:
 Filename: "{app}\PackageInstallerProService.exe"; Parameters: "remove"; RunOnceId: "RemoveService"; Flags: runhidden; Tasks: not portable
 
 [Registry]
-Root: HKLM; Subkey: "Software\PackageInstallerPro"; ValueType: string; ValueName: "Version"; ValueData: "{appversion}"; Flags: uninsdeletekey; Tasks: not portable
+Root: HKLM; Subkey: "Software\PackageInstallerPro"; ValueType: string; ValueName: "Version"; ValueData: "{AppVersion}"; Flags: uninsdeletekey; Tasks: not portable
 
 [Code]
 function CompareVersion(ver1, ver2: String): Integer;
 var
   P, N1, N2: Integer;
+  s1, s2: String;
 begin
   Result := 0;
-  while (Result = 0) and ((ver1 <> '') or (ver2 <> '')) do
+  s1 := ver1;
+  s2 := ver2;
+  while (Result = 0) and ((s1 <> '') or (s2 <> '')) do
   begin
-    P := Pos('.', ver1);
+    P := Pos('.', s1);
     if P > 0 then
     begin
-      N1 := StrToInt(Copy(ver1, 1, P - 1));
-      Delete(ver1, 1, P);
+      N1 := StrToIntDef(Copy(s1, 1, P - 1), 0);
+      Delete(s1, 1, P);
     end
-    else if ver1 <> '' then
+    else if s1 <> '' then
     begin
-      N1 := StrToInt(ver1);
-      ver1 := '';
+      N1 := StrToIntDef(s1, 0);
+      s1 := '';
     end
     else
       N1 := 0;
-    P := Pos('.', ver2);
+
+    P := Pos('.', s2);
     if P > 0 then
     begin
-      N2 := StrToInt(Copy(ver2, 1, P - 1));
-      Delete(ver2, 1, P);
+      N2 := StrToIntDef(Copy(s2, 1, P - 1), 0);
+      Delete(s2, 1, P);
     end
-    else if ver2 <> '' then
+    else if s2 <> '' then
     begin
-      N2 := StrToInt(ver2);
-      ver2 := '';
+      N2 := StrToIntDef(s2, 0);
+      s2 := '';
     end
     else
       N2 := 0;
-    if N1 < N2 then Result := -1
-    else if N1 > N2 then Result := 1;
+
+    if N1 < N2 then
+      Result := -1
+    else if N1 > N2 then
+      Result := 1;
   end;
 end;
 
@@ -82,14 +89,13 @@ function InitializeSetup: Boolean;
 var
   ExistingVersion: String;
 begin
+  Result := True;
   if RegQueryStringValue(HKLM, 'Software\PackageInstallerPro', 'Version', ExistingVersion) then
   begin
     if CompareVersion(ExistingVersion, '1.0') > 0 then
     begin
       MsgBox('A newer version is already installed. Setup will exit.', mbError, MB_OK);
       Result := False;
-      Exit;
     end;
   end;
-  Result := True;
 end;
