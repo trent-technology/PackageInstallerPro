@@ -2,14 +2,14 @@
 AppName=PackageInstallerPro
 AppVersion=1.0
 AppVerName=PackageInstallerPro 1.0
-DefaultDirName={pf}\PackageInstallerPro
+DefaultDirName={autopf}\PackageInstallerPro
 DefaultGroupName=PackageInstallerPro
 OutputDir=.
 OutputBaseFilename=PackageInstallerProInstaller
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
-MinVersion=0,10.0.10240  ; Windows 10 (build 10240) and later
+MinVersion=0,6.2
 DisableProgramGroupPage=yes
 Uninstallable=not IsTaskSelected('portable')
 
@@ -37,7 +37,7 @@ Filename: "{app}\PackageInstallerProService.exe"; Parameters: "stop"; RunOnceId:
 Filename: "{app}\PackageInstallerProService.exe"; Parameters: "remove"; RunOnceId: "RemoveService"; Flags: runhidden; Tasks: not portable
 
 [Registry]
-Root: HKLM; Subkey: "Software\PackageInstallerPro"; ValueType: string; ValueName: "Version"; ValueData: "{AppVersion}"; Flags: uninsdeletekey; Tasks: not portable
+Root: HKLM; Subkey: "Software\PackageInstallerPro"; ValueType: string; ValueName: "Version"; ValueData: "1.0"; Flags: uninsdeletekey; Tasks: not portable
 
 [Code]
 function CompareVersion(ver1, ver2: String): Integer;
