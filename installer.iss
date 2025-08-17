@@ -23,8 +23,9 @@ Source: "dist\PackageInstallerProService.exe"; DestDir: "{app}"; Flags: ignoreve
 Source: "config.json"; DestDir: "{app}"; Flags: ignoreversion
 
 [Run]
-Filename: "{app}\PackageInstallerProService.exe"; Parameters: "install"; Flags: runhidden waituntilterminated
-Filename: "{app}\PackageInstallerProService.exe"; Parameters: "start"; Flags: runhidden waituntilterminated
+; Updated: Added 'Tasks: not portable' to ensure service is only installed when uninstall is available, preventing leftovers
+Filename: "{app}\PackageInstallerProService.exe"; Parameters: "install"; Flags: runhidden waituntilterminated; Tasks: not portable
+Filename: "{app}\PackageInstallerProService.exe"; Parameters: "start"; Flags: runhidden waituntilterminated; Tasks: not portable
 Filename: "{app}\PackageInstallerPro.exe"; Description: "{cm:LaunchProgram,PackageInstallerPro}"; Flags: nowait postinstall skipifsilent
 
 [Icons]
