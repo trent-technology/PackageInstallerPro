@@ -12,6 +12,7 @@ import logging
 import shlex
 import sys
 from typing import List, Dict, Optional
+import servicemanager  # Added for standalone dispatch
 
 SERVICE_NAME = "PackageInstallerProService"
 PIPE_NAME = r"\\.\pipe\PackageInstallerPipe"
@@ -174,4 +175,10 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
             return f"ERROR Command processing failed: {e}"
 
 if __name__ == '__main__':
-    win32serviceutil.HandleCommandLine(PackageInstallerProService)
+    # Updated dispatch logic for PyInstaller standalone EXE (fixes Error 1053 on start)
+    if len(sys.argv) == 1:  # SCM starting the service (no args)
+        servicemanager.Initialize()
+        servicemanager.PrepareToHostSingle(PackageInstallerProService)
+        servicemanager.StartServiceCtrlDispatcher()
+    else:  # Command-line operations (install, start, stop, etc.)
+        win32serviceutil.HandleCommandLine(PackageInstallerProService)
