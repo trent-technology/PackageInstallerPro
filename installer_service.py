@@ -41,19 +41,17 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
     _svc_name_ = SERVICE_NAME
     _svc_display_name_ = "Package Installer Pro Service"
     _svc_description_ = "Allows non-admin users to install curated apps through PackageInstallerPro."
-    # Explicitly set startup type to auto for consistency (fixes potential manual default issues)
-    _start_type = win32service.SERVICE_AUTO_START
 
     def __init__(self, args):
         win32serviceutil.ServiceFramework.__init__(self, args)
         self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
         self.running = True
-        self.packages: List[Dict[str, str]] = []
+        self.packages: List[Dict[str, str]] = []  # Initialize empty; load later to avoid startup delays
         self.repository_url: str = ""
-        self.load_packages()
 
     def load_packages(self) -> None:
         """Load repository_url from config.json and dynamically discover packages from the network path."""
+        logging.info("Starting package load from repository.")
         try:
             with open(CONFIG_PATH, "r") as f:
                 data = json.load(f)
@@ -90,6 +88,8 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
 
             if not self.packages:
                 logging.warning("No installers found in the repository path.")
+            else:
+                logging.info(f"Loaded {len(self.packages)} packages successfully.")
 
         except Exception as e:
             logging.error(f"Failed to load repository or packages: {e}")
@@ -101,10 +101,12 @@ class PackageInstallerProService(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.hWaitStop)
 
     def SvcDoRun(self):
-        # Report running status immediately to avoid SCM timeout (fixes Error 1053)
+        # Report running immediately to avoid SCM timeout (fixes Error 1053)
         self.ReportServiceStatus(win32service.SERVICE_RUNNING)
-        logging.info("PackageInstallerProService has started successfully.")  # Enhanced logging for startup confirmation
+        logging.info("PackageInstallerProService has started successfully.")
         servicemanager.LogInfoMsg("PackageInstallerProService started.")
+        # Load packages after reporting ready, to handle potential network delays gracefully
+        self.load_packages()
         self.run()
 
     def run(self):
